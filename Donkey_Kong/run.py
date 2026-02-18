@@ -48,7 +48,7 @@ for episode in range(num_episodes):
         action = agent.select_action(state)
         
         # Le jeu s'exécute
-        next_state, reward, terminated, truncated, info = env.step(action)
+        next_state, reward, terminated, truncated, info = env.step(action) #ajout reward si monte ou saute au dessus d un tonneau
         done = terminated or truncated
         
         # On enregistre dans la mémoire
