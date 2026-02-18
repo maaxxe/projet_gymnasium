@@ -87,7 +87,9 @@ Contient toute la logique de décision et d'apprentissage. Instancié **5 fois**
 
 ---
 
-## 4. `reward_shaping.py` — La Hiérarchie des Récompenses ⭐
+## 4. `reward_shaping.py` — La Hiérarchie des Récompenses 
+
+
 
 Transforme la récompense brute ALE en signal pédagogique structuré par importance stratégique.
 
@@ -101,6 +103,7 @@ Transforme la récompense brute ALE en signal pédagogique structuré par import
 | Fruit bonus       | +10.0          | +100 à +500 pts        |
 | Manger un fantôme | +20 × combo    | +200/400/800/1600 pts  |
 | Finir le niveau   | **+100.0**     | done sans perte de vie |
+| bonus step        | +0.1 par step  |  step sans mort        |
 
 ### `RewardShaper.__init__(self)`
 - Initialise les compteurs `prev_score`, `prev_lives`, `prev_dots_left`.

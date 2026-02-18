@@ -83,4 +83,9 @@ class RewardShaper:
         if done and current_lives == self.prev_lives and current_lives > 0:
             shaped += REWARD_NIVEAU_FINI
 
+        # --- Bonus de survie : encourage Pac-Man à rester en vie ---
+        # Contre-balance la pénalité de mort et pousse à explorer
+        if current_lives == self.prev_lives:
+            shaped += 0.1
+
         return shaped

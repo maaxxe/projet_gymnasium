@@ -6,21 +6,33 @@ from mspacman_env import make_env
 from agent import DQNAgent
 from reward_shaping import RewardShaper
 
-# ─── Configuration ────────────────────────────────────────────
+
+
+# === Progression totale =======================================
+episodes_precedents = 0
+if os.path.exists("progression.txt"):
+    with open("progression.txt", "r") as f:
+        episodes_precedents = int(f.read())
+    print(f"    Progression totale : {episodes_precedents} épisodes joués au total")
+else:
+    print(f"    Premier démarrage — aucun historique trouvé")
+
+
+# === Configuration ============================================
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Entraînement sur : {device}")
 
-RENDER = True   # ← Mettre False pour entraîner sans fenêtre (plus rapide) de ~3000 steps/s a 60 steps/s
+RENDER = False   # ← Mettre False pour entraîner sans fenêtre (plus rapide) de ~3000 steps/s a 60 steps/s
 NUM_EPISODES = 1000 # Nombre d'épisodes d'entraînement (ajuster selon le temps disponible)
 BATCH_SIZE    = 32      # Taille du batch pour l'entraînement DQN
 TARGET_UPDATE = 1000    # Nombre de steps entre chaque mise à jour du Target Network
 GHOST_NAMES   = ["Blinky", "Pinky", "Inky", "Sue"]  
 
-# ─── Environnement ────────────────────────────────────────────
+# === Environnement ============================================
 env = make_env(render_mode='human' if RENDER else None)   # ← ICI, remplace l'ancien make_env()
 n_actions = env.action_space.n
 
-# ─── Agents ───────────────────────────────────────────────────
+# === Agents ===================================================
 pacman_agent = DQNAgent(n_actions, device, agent_type="pacman")
 ghost_agents  = [DQNAgent(n_actions, device, agent_type="ghost")
                  for _ in GHOST_NAMES]
@@ -30,7 +42,7 @@ def charger_modele(agent, path):
     if os.path.exists(path):
         agent.policy_net.load_state_dict(torch.load(path, map_location=device))
         agent.target_net.load_state_dict(agent.policy_net.state_dict())
-        agent.epsilon = 0.2
+        agent.epsilon = 0.5 # avant a 0.2 pour encourager un peu d'exploration plus le nombre est haut plus l'agent explore moins il rejoue sa strategie
         print(f"   Modèle chargé : {path}")
     else:
         print(f"   Nouveau modèle : {path}")
@@ -39,13 +51,13 @@ charger_modele(pacman_agent, "mspacman_pacman.pth")
 for i, g_agent in enumerate(ghost_agents):
     charger_modele(g_agent, f"mspacman_ghost_{GHOST_NAMES[i]}.pth")
 
-# ─── Reward Shaper ────────────────────────────────────────────
+# === Reward Shaper ============================================
 shaper = RewardShaper()
 
-# ─── Compteur global de steps (pour TARGET_UPDATE) ────────────
+# === Compteur global de steps (pour TARGET_UPDATE) ============
 global_step = 0
 
-# ─── Boucle principale ────────────────────────────────────────
+# === Boucle principale ========================================
 
 historique_pacman = []  # Pour suivre les scores de Pac-Man
 try:
@@ -60,41 +72,41 @@ try:
         for t in range(15000):
             global_step += 1
 
-            # ── Pac-Man choisit son action ──
+            # == Pac-Man choisit son action ==
             pacman_action = pacman_agent.select_action(state)
 
-            # ── Fantômes choisissent leur action (même obs visuelle) ──
+            # == Fantômes choisissent leur action (même obs visuelle) ==
             # Note : Dans ALE, seule l'action de Pac-Man est envoyée à l'env.
             # Les fantômes ont une IA interne ALE. Ici, on entraîne des cerveaux
             # "fantômes" en leur donnant le même état pixel et une reward inversée,
             # simulant leur rôle antagoniste.
             ghost_actions = [g.select_action(state) for g in ghost_agents]
 
-            # ── Step de l'environnement (action de Pac-Man uniquement) ──
+            # == Step de l'environnement (action de Pac-Man uniquement) ==
             next_state, raw_reward, terminated, truncated, info = env.step(pacman_action)
             done = terminated or truncated
 
-            # ── Reward hiérarchisée pour Pac-Man ──
+            # == Reward hiérarchisée pour Pac-Man ==
             shaped_reward_pacman = shaper.shape(raw_reward, info, done)
 
-            # ── Reward inversée pour les fantômes ──
+            # == Reward inversée pour les fantômes ==
             # Les fantômes sont récompensés quand Pac-Man subit une pénalité
             shaped_reward_ghost = -shaped_reward_pacman * 0.5
             # Bonus fantôme si Pac-Man meurt
             if shaped_reward_pacman <= -50:
                 shaped_reward_ghost += 30.0
 
-            # ── Enregistrement mémoire ──
+            # == Enregistrement mémoire ==
             pacman_agent.memory.push(state, pacman_action, shaped_reward_pacman, next_state, done)
             for i, g_agent in enumerate(ghost_agents):
                 g_agent.memory.push(state, ghost_actions[i], shaped_reward_ghost, next_state, done)
 
-            # ── Entraînement ──
+            # == Entraînement ==
             pacman_agent.train(BATCH_SIZE)
             for g_agent in ghost_agents:
                 g_agent.train(BATCH_SIZE)
 
-            # ── Mise à jour Target Networks ──
+            # == Mise à jour Target Networks ==
             if global_step % TARGET_UPDATE == 0:
                 pacman_agent.target_net.load_state_dict(pacman_agent.policy_net.state_dict())
                 for g_agent in ghost_agents:
@@ -108,7 +120,7 @@ try:
             if done:
                 break
 
-        # ── Logs ──
+        # == Logs ==
         ghost_scores = " | ".join(
             f"{GHOST_NAMES[i]}: {total_reward_ghosts[i]:.1f}" for i in range(4)
         )
@@ -121,31 +133,35 @@ try:
         )
         historique_pacman.append(total_reward_pacman)
 
-        # ── Sauvegarde toutes les 50 parties ──
+        # == Sauvegarde toutes les 50 parties ==
         if episode % 50 == 0:
             torch.save(pacman_agent.policy_net.state_dict(), "mspacman_pacman.pth")
             for i, g_agent in enumerate(ghost_agents):
                 torch.save(g_agent.policy_net.state_dict(), f"mspacman_ghost_{GHOST_NAMES[i]}.pth")
-            print("   Modèles sauvegardés.")
+            with open("progression.txt", "w") as f:   # ← AJOUTE
+                f.write(str(episodes_precedents + episode))
+            print(f"    Modèles sauvegardés. (total : {episodes_precedents + episode} épisodes)")
 except KeyboardInterrupt:
     print("\n  Entraînement interrompu — sauvegarde d'urgence...")
     torch.save(pacman_agent.policy_net.state_dict(), "mspacman_pacman.pth")
     for i, g_agent in enumerate(ghost_agents):
         torch.save(g_agent.policy_net.state_dict(), f"mspacman_ghost_{GHOST_NAMES[i]}.pth")
-    print(" Modèles sauvegardés proprement.")
+    with open("progression.txt", "w") as f:   # ← AJOUTE
+        f.write(str(episodes_precedents + episode))
+    print(f"   Modèles sauvegardés. (total : {episodes_precedents + episode} épisodes)")
 
-     # ── Récapitulatif des scores ──
+     # == Récapitulatif des scores ==
     if historique_pacman:
         nb = len(historique_pacman)
-        print(f"\n{'─'*50}")
+        print(f"\n{'='*50}")
         print(f"   RÉCAPITULATIF — {nb} épisodes joués")
-        print(f"{'─'*50}")
+        print(f"{'='*50}")
         print(f"  Score moyen   : {sum(historique_pacman)/nb:8.1f}")
         print(f"  Meilleur score: {max(historique_pacman):8.1f}  (épisode {historique_pacman.index(max(historique_pacman))})")
         print(f"  Pire score    : {min(historique_pacman):8.1f}  (épisode {historique_pacman.index(min(historique_pacman))})")
         print(f"  Score final   : {historique_pacman[-1]:8.1f}  (dernier épisode)")
         print(f"  Epsilon final : {pacman_agent.epsilon:.4f}")
-        print(f"{'─'*50}\n")
+        print(f"{'='*50}\n")
 
 
 finally:

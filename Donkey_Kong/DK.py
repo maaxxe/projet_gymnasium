@@ -23,8 +23,7 @@ def jouer():
         (ord("q"),): 4,      # Gauche
         (ord("d"),): 3,      # Droite
         (ord(" "),): 1,      # Saut (Espace)
-    }, fps=30, zoom=4) # <--- ZOOM AJOUTÉ ICI
-    
+    }, fps=30, zoom=4) 
     env_manual.close()
 
 def test():

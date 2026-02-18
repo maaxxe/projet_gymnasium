@@ -29,10 +29,10 @@ if __name__ == "__main__":
         env = make_env('ALE/DonkeyKong-v5')
         obs, info = env.reset()
         
-        print(f"✅ Succès ! Version Gymnasium: {gym.__version__}")
-        print(f"✅ Forme de l'observation : {obs.shape}")
+        print(f" Succès ! Version Gymnasium: {gym.__version__}")
+        print(f" Forme de l'observation : {obs.shape}")
         
         env.step(env.action_space.sample())
         env.close()
     except Exception as e:
-        print(f"❌ Erreur persistante : {e}")
+        print(f" Erreur persistante : {e}")

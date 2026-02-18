@@ -27,7 +27,9 @@ def make_env(render_mode='human'): # humain par default change dans run.py
         'ALE/MsPacman-v5',
         render_mode=render_mode,
         frameskip=1,          # AtariPreprocessing gère le frameskip lui-même
+        full_action_space=False,  # ← réduit à 5 actions : NOOP, UP, RIGHT, LEFT, DOWN
         repeat_action_probability=0.0
+        
         
     )
 
