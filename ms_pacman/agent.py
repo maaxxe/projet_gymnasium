@@ -25,9 +25,9 @@ class DQNAgent:
 
         self.power_pellet_active = False
 
-        def set_power_pellet(self, active: bool):
-            """Appelé depuis run.py quand raw_reward == 50 (power pellet mangé)."""
-            self.power_pellet_active = active
+    def set_power_pellet(self, active: bool):
+        """Appelé depuis run.py quand raw_reward == 50 (power pellet mangé)."""
+        self.power_pellet_active = active
 
     def select_action(self, state):
         if random.random() < self.epsilon:

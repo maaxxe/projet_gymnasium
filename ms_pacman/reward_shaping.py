@@ -8,13 +8,13 @@
 # Niveau 5 (objectif)  : finir le niveau (toutes les gommes mangées)
 
 REWARD_SURVIE   =  0.01   # ← Nouveau : récompense "vivre"
-REWARD_MORT           = -200.0   # Pénalité forte pour la mort
+REWARD_MORT           = -20.0   # Pénalité forte pour la mort
 REWARD_DOT            =   2.0   # Gomme normale (+10 pts dans le jeu)
 REWARD_POWER_PELLET   =   5.0   # Power pellet (+50 pts, ouvre le mode chasse)
 REWARD_FANTOME        =  20.0   # Manger un fantôme (200-1600 pts en cascade)
 REWARD_FRUIT          =  10.0   # Fruit bonus (cerise, fraise, etc.)
-REWARD_NIVEAU_FINI    = 100.0   # Finir le niveau = objectif ultime
-REWARD_MUR_STRICT     = -5.0   # Pénalité si bloqué longtemps (plus de 10 steps)
+REWARD_NIVEAU_FINI    = 50.0   # Finir le niveau = objectif ultime
+REWARD_MUR_STRICT     = -1.0   # Pénalité si bloqué longtemps (plus de 10 steps)
 
 class RewardShaper:
     """
@@ -54,7 +54,10 @@ class RewardShaper:
         # --- Niveau 1 : Mort ---
         if current_lives < self.prev_lives:
             shaped += REWARD_MORT
-            self.prev_lives = current_lives
+            
+
+        lost_life = current_lives < self.prev_lives
+        self.prev_lives = current_lives
 
         if raw_reward == 0:
             self.steps_stagnant += 1
@@ -113,5 +116,5 @@ class RewardShaper:
             shaped += 50.0
 
         shaped += REWARD_SURVIE  # Motivation constante !
-
-        return shaped
+        #return shaped
+        return float(max(min(shaped, 50.0), -30.0))  # Clamp final pour éviter les valeurs extrêmes

@@ -48,6 +48,7 @@ def make_env(render_mode='human'): # humain par default change dans run.py
 
    
     env = LimitActions(env) # limite les actions a 5
+    env = NoWallBump(env)   # wrapper pour détecter les murs (hit_wall=True dans info)
 
 
     

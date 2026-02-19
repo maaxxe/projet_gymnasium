@@ -42,10 +42,30 @@ def charger_modele(agent, path):
     if os.path.exists(path):
         agent.policy_net.load_state_dict(torch.load(path, map_location=device))
         agent.target_net.load_state_dict(agent.policy_net.state_dict())
-        agent.epsilon = 0.5 # avant a 0.2 pour encourager un peu d'exploration plus le nombre est haut plus l'agent explore moins il rejoue sa strategie
-        print(f"   Modèle chargé : {path}")
+        # FIXÉ : on recharge aussi l'epsilon sauvegardé si disponible
+        eps_path = path.replace(".pth", "_epsilon.txt")
+        if os.path.exists(eps_path):
+            with open(eps_path) as f:
+                agent.epsilon = float(f.read())
+        else:
+            agent.epsilon = 0.5
+        print(f"  Modèle chargé : {path} (ε={agent.epsilon:.3f})")
     else:
-        print(f"   Nouveau modèle : {path}")
+        print(f"  Nouveau modèle : {path}")
+
+def sauvegarder(episode_total):
+    torch.save(pacman_agent.policy_net.state_dict(), "mspacman_pacman.pth")
+    # FIXÉ : sauvegarde de l'epsilon pour reprendre correctement
+    with open("mspacman_pacman_epsilon.txt", "w") as f:
+        f.write(str(pacman_agent.epsilon))
+    for i, g_agent in enumerate(ghost_agents):
+        path = f"mspacman_ghost_{GHOST_NAMES[i]}.pth"
+        torch.save(g_agent.policy_net.state_dict(), path)
+        with open(path.replace(".pth", "_epsilon.txt"), "w") as f:
+            f.write(str(g_agent.epsilon))
+    with open("progression.txt", "w") as f:
+        f.write(str(episode_total))
+    print(f"  Modèles sauvegardés (total : {episode_total} épisodes)")
 
 charger_modele(pacman_agent, "mspacman_pacman.pth")
 for i, g_agent in enumerate(ghost_agents):
@@ -85,6 +105,13 @@ try:
             # == Step de l'environnement (action de Pac-Man uniquement) ==
             next_state, raw_reward, terminated, truncated, info = env.step(pacman_action)
             done = terminated or truncated
+
+
+            # mise à jour de power_pellet_active avant le shaping
+            if raw_reward == 50:
+                pacman_agent.set_power_pellet(True)
+            elif done or info.get("lives", 3) < shaper.prev_lives:
+                pacman_agent.set_power_pellet(False)
 
             # == Reward hiérarchisée pour Pac-Man ==
             shaped_reward_pacman = shaper.shape(raw_reward, info, done)
@@ -135,21 +162,12 @@ try:
 
         # == Sauvegarde toutes les 50 parties ==
         if episode % 50 == 0:
-            torch.save(pacman_agent.policy_net.state_dict(), "mspacman_pacman.pth")
-            for i, g_agent in enumerate(ghost_agents):
-                torch.save(g_agent.policy_net.state_dict(), f"mspacman_ghost_{GHOST_NAMES[i]}.pth")
-            with open("progression.txt", "w") as f:   # ← AJOUTE
-                f.write(str(episodes_precedents + episode))
-            print(f"    Modèles sauvegardés. (total : {episodes_precedents + episode} épisodes)")
-except KeyboardInterrupt:
-    print("\n  Entraînement interrompu — sauvegarde d'urgence...")
-    torch.save(pacman_agent.policy_net.state_dict(), "mspacman_pacman.pth")
-    for i, g_agent in enumerate(ghost_agents):
-        torch.save(g_agent.policy_net.state_dict(), f"mspacman_ghost_{GHOST_NAMES[i]}.pth")
-    with open("progression.txt", "w") as f:   # ← AJOUTE
-        f.write(str(episodes_precedents + episode))
-    print(f"   Modèles sauvegardés. (total : {episodes_precedents + episode} épisodes)")
+            sauvegarder(episodes_precedents + episode)
 
+except KeyboardInterrupt:
+    print("\n  Interruption — sauvegarde d'urgence...")
+    sauvegarder(episodes_precedents + episode)
+finally:
      # == Récapitulatif des scores ==
     if historique_pacman:
         nb = len(historique_pacman)
@@ -164,7 +182,7 @@ except KeyboardInterrupt:
         print(f"{'='*50}\n")
 
 
-finally:
+
     env.close()
 
 
