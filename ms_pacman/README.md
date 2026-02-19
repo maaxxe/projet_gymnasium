@@ -251,4 +251,37 @@ Pour un entrainement optimal ( pour que ça tourne même si le terminal est ferm
 # lancer 
 nohup python run.py & 
 # avec RENDER = False,  
+
+#arreter 
+pkill -f run.py
+
 ```
+
+
+```python
+# Voir les logs en temps réel (équivalent du terminal)
+tail -f nohup.out
+
+# Voir si le script tourne encore
+ps aux | grep run.py
+
+# L'arrêter proprement (remplace ton PID)
+kill <PID>
+
+```
+
+# 0. Vérifie les processus actifs
+ps aux | grep run.py
+
+# 1. Vérifie la dernière ligne
+tail -5 nohup.out
+
+# 2. Vérifie s'il y a une erreur cachée
+cat nohup.out
+
+# 3. Vérifie le GPU (s'il calcule quelque chose)
+watch -n 1 nvidia-smi
+
+# 4. Tue et relance en foreground pour voir l'erreur
+kill $(cat processus.pid)
+python run.py

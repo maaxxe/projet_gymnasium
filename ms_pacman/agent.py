@@ -22,7 +22,7 @@ class DQNAgent:
         # Les fantômes explorent différemment de Pac-Man
         self.epsilon = 1.0
         self.epsilon_min = 0.05 if agent_type == "ghost" else 0.1
-        self.epsilon_decay = 0.99995
+        self.epsilon_decay = 0.99999
 
     def select_action(self, state):
         if random.random() < self.epsilon:

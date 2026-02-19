@@ -2,12 +2,27 @@ import gymnasium as gym
 import ale_py
 import numpy as np
 import os
+from wall_avoid_wrapper import NoWallBump
+
+# Tentative d'importation robuste des wrappers
+from gymnasium.wrappers import AtariPreprocessing, FrameStackObservation
 
 gym.register_envs(ale_py)
 
 #  Supprime les messages ALSA underrun
 os.environ["SDL_AUDIODRIVER"] = "dummy"
 os.environ["AUDIODEV"] = "null"
+
+class LimitActions(gym.ActionWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        # On définit les actions que l'on veut garder :
+        # 0: NOOP, 1: UP, 2: RIGHT, 3: LEFT, 4: DOWN
+        self.mapping = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}
+        self.action_space = gym.spaces.Discrete(5)
+
+    def action(self, action):
+        return self.mapping.get(action, 0)
 
 def make_env(render_mode='human'): # humain par default change dans run.py
     """
@@ -28,26 +43,25 @@ def make_env(render_mode='human'): # humain par default change dans run.py
         render_mode=render_mode,
         frameskip=1,          # AtariPreprocessing gère le frameskip lui-même
         full_action_space=False,  # ← réduit à 5 actions : NOOP, UP, RIGHT, LEFT, DOWN
-        repeat_action_probability=0.0
-        
-        
+        repeat_action_probability=0.0,
     )
 
-    # AtariPreprocessing fait tout en une fois :
-    # - Grayscale (sans keep_dim → shape (84,84))
-    # - Resize 84x84
-    # - Max pooling sur 2 frames (évite le flickering Atari)
-    # - Frame skip (4 frames par action)
-    # - Normalisation optionnelle désactivée (on le fait dans le CNN)
-    env = gym.wrappers.AtariPreprocessing(
+   
+    env = LimitActions(env) # limite les actions a 5
+
+
+    
+
+    # ATTENTION : On met frame_skip=1 ici car tu as ajouté FrameSkip(skip=4) manuellement.
+    env = AtariPreprocessing(
         env,
-        noop_max=30,
-        frame_skip=4,
+        noop_max=30,           
+        frame_skip=4,         # On laisse AtariPreprocessing gérer le saut de 4 (plus stable)
         screen_size=84,
-        terminal_on_life_loss=False,   # On gère la mort dans RewardShaper
+        terminal_on_life_loss=False,
         grayscale_obs=True,
-        grayscale_newaxis=False,       # ← CLÉ : shape (84,84) PAS (84,84,1)
-        scale_obs=False                # Pas de normalisation ici (fait dans CNN /255)
+        grayscale_newaxis=False,
+        scale_obs=False
     )
 
     # FrameStackObservation : empile 4 frames → (4, 84, 84)

@@ -24,7 +24,7 @@ print(f"Entraînement sur : {device}")
 
 RENDER = False   # ← Mettre False pour entraîner sans fenêtre (plus rapide) de ~3000 steps/s a 60 steps/s
 NUM_EPISODES = 1000 # Nombre d'épisodes d'entraînement (ajuster selon le temps disponible)
-BATCH_SIZE    = 32      # Taille du batch pour l'entraînement DQN
+BATCH_SIZE    = 64      # Taille du batch pour l'entraînement DQN
 TARGET_UPDATE = 1000    # Nombre de steps entre chaque mise à jour du Target Network
 GHOST_NAMES   = ["Blinky", "Pinky", "Inky", "Sue"]  
 
