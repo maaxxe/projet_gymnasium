@@ -1,6 +1,5 @@
 import torch
 import torch.optim as optim
-import numpy as np
 import random
 from dqn_self import DQNCerveau
 from replay_buffer import ReplayBuffer
@@ -22,11 +21,18 @@ class DQNAgent:
         # Les fantômes explorent différemment de Pac-Man
         self.epsilon = 1.0
         self.epsilon_min = 0.05 if agent_type == "ghost" else 0.1
-        self.epsilon_decay = 0.99999
+        self.epsilon_decay = 0.9995
+
+        self.power_pellet_active = False
+
+        def set_power_pellet(self, active: bool):
+            """Appelé depuis run.py quand raw_reward == 50 (power pellet mangé)."""
+            self.power_pellet_active = active
 
     def select_action(self, state):
         if random.random() < self.epsilon:
             return random.randint(0, self.n_actions - 1)
+        
         with torch.no_grad():
             state_t = torch.tensor(state).unsqueeze(0).to(self.device)
             q_values = self.policy_net(state_t)
@@ -47,10 +53,13 @@ class DQNAgent:
         with torch.no_grad():
             next_q = self.target_net(next_states).max(1)[0]
             expected_q = rewards + (0.99 * next_q * (1 - dones))
-
-        loss = torch.nn.functional.mse_loss(current_q.squeeze(), expected_q)
+        # Huber loss à la place de MSE → plus stable avec des grandes rewards shapées
+        loss = torch.nn.functional.smooth_l1_loss(current_q.squeeze(), expected_q)
+        #loss = torch.nn.functional.mse_loss(current_q.squeeze(), expected_q)
         self.optimizer.zero_grad()
         loss.backward()
+        # gradient clipping ajouté pour éviter les explosions de gradients
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), max_norm=10)
         self.optimizer.step()
 
         if self.epsilon > self.epsilon_min:
